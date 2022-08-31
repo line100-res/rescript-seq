@@ -1,6 +1,9 @@
 {
-  "name": "rescript-project-template",
-  "version": "0.0.1",
+  "name": "@line100/rescript-seq",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.0.2",
   "scripts": {
     "build": "rescript",
     "clean": "rescript clean -with-deps",
@@ -8,7 +11,10 @@
     "test": "rescript build && retest"
   },
   "keywords": [
-    "rescript"
+    "rescript",
+    "lazy",
+    "sequence",
+    "list"
   ],
   "author": "",
   "license": "MIT",

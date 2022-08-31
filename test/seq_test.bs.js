@@ -130,5 +130,28 @@ Test.test("test takeListCount", (function (param) {
                   });
       }));
 
+Test.test("infinit seq", (function (param) {
+        var createInfinitSeq = function (i) {
+          return Seq.cons(i, {
+                      TAG: /* Lazy */1,
+                      _0: (function (param) {
+                          return createInfinitSeq(i + 1 | 0);
+                        })
+                    });
+        };
+        var seq = createInfinitSeq(0);
+        var first3 = Seq.take(seq, 3);
+        return TestUtils.seqEqual("get first 3 from infinit list", first3, {
+                    hd: 0,
+                    tl: {
+                      hd: 1,
+                      tl: {
+                        hd: 2,
+                        tl: /* [] */0
+                      }
+                    }
+                  });
+      }));
+
 exports.createCharSeq = createCharSeq;
 /*  Not a pure module */

@@ -65,3 +65,13 @@ test("test takeListCount", () => {
   intEqual(~message="count is 5", count, 5)
   seqEqual(~message="seq is 1 2 3 4 5", l -> Seq.fromList, list{1, 2, 3, 4, 5})
 })
+
+test("infinit seq", () => {
+  let rec createInfinitSeq = (i) =>
+    Seq.cons(i, Seq.Lazy(() => createInfinitSeq(i + 1)))
+
+  let seq = createInfinitSeq(0)
+  let first3 = Seq.take(seq, 3)
+
+  seqEqual(~message="get first 3 from infinit list", first3, list{0, 1, 2})
+})
