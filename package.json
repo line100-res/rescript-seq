@@ -1,9 +1,9 @@
 {
   "name": "@line100/rescript-seq",
+  "version": "0.0.3",
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.0.2",
   "scripts": {
     "build": "rescript",
     "clean": "rescript clean -with-deps",
