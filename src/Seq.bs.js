@@ -12,13 +12,22 @@ var Err = /* @__PURE__ */Caml_exceptions.create("Seq.Err");
 function force(cons) {
   var tail = cons.tail;
   var tmp;
-  tmp = tail.TAG === /* Forced */0 ? ({
-        TAG: /* Forced */0,
-        _0: tail._0
-      }) : ({
-        TAG: /* Forced */0,
-        _0: Curry._1(tail._0, undefined)
-      });
+  if (tail.TAG === /* Forced */0) {
+    tmp = {
+      TAG: /* Forced */0,
+      _0: tail._0
+    };
+  } else {
+    var thunk = tail._0;
+    var ret = Curry._1(thunk, undefined);
+    tmp = ret !== undefined ? ({
+          TAG: /* Forced */0,
+          _0: ret
+        }) : ({
+          TAG: /* Lazy */1,
+          _0: thunk
+        });
+  }
   cons.tail = tmp;
   return cons;
 }
@@ -33,11 +42,7 @@ function cdr(cons) {
   if (tail.TAG === /* Forced */0) {
     return tail._0;
   }
-  throw {
-        RE_EXN_ID: Err,
-        _1: "cdr force unexpected error.",
-        Error: new Error()
-      };
+  
 }
 
 function cons(head, tail) {
@@ -92,8 +97,16 @@ function equal(_seq1, _seq2) {
     if (!Caml_obj.caml_equal(c1.head, c2.head)) {
       return false;
     }
-    _seq2 = cdr(c2);
-    _seq1 = cdr(c1);
+    var match = cdr(c1);
+    var match$1 = cdr(c2);
+    if (match === undefined) {
+      return false;
+    }
+    if (match$1 === undefined) {
+      return false;
+    }
+    _seq2 = match$1;
+    _seq1 = match;
     continue ;
   };
 }
@@ -110,7 +123,11 @@ function map(seq, f) {
             tail: {
               TAG: /* Lazy */1,
               _0: (function (param) {
-                  return map(cdr(c), f);
+                  var t = cdr(c);
+                  if (t !== undefined) {
+                    return map(t, f);
+                  }
+                  
                 })
             }
           }
@@ -128,7 +145,11 @@ function append(seq, thunk) {
             tail: {
               TAG: /* Lazy */1,
               _0: (function (param) {
-                  return append(cdr(c), thunk);
+                  var t = cdr(c);
+                  if (t !== undefined) {
+                    return append(t, thunk);
+                  }
+                  
                 })
             }
           }
@@ -160,6 +181,24 @@ function countForced(seq) {
   };
 }
 
+function consWait(head, wait, $$then) {
+  return /* Cons */{
+          _0: {
+            head: head,
+            tail: {
+              TAG: /* Lazy */1,
+              _0: (function (param) {
+                  var v = Curry._1(wait, undefined);
+                  if (v !== undefined) {
+                    return Curry._1($$then, Caml_option.valFromOption(v));
+                  }
+                  
+                })
+            }
+          }
+        };
+}
+
 function take(seq, n) {
   if (n === 0) {
     return /* Nil */0;
@@ -167,14 +206,21 @@ function take(seq, n) {
   if (!seq) {
     return /* Nil */0;
   }
-  var c = seq._0;
+  var match = force(seq._0);
+  var head = match.head;
+  var v = match.tail;
+  if (v.TAG !== /* Forced */0) {
+    return consWait(head, v._0, (function (v) {
+                  return take(v, n - 1 | 0);
+                }));
+  }
   var tail = {
     TAG: /* Forced */0,
-    _0: take(cdr(c), n - 1 | 0)
+    _0: take(v._0, n - 1 | 0)
   };
   return /* Cons */{
           _0: {
-            head: c.head,
+            head: head,
             tail: tail
           }
         };
@@ -187,14 +233,22 @@ function lazyTake(seq, n) {
   if (!seq) {
     return /* Nil */0;
   }
-  var c = seq._0;
+  var match = force(seq._0);
+  var head = match.head;
+  var v = match.tail;
+  if (v.TAG !== /* Forced */0) {
+    return consWait(head, v._0, (function (v) {
+                  return lazyTake(v, n - 1 | 0);
+                }));
+  }
+  var v$1 = v._0;
   return /* Cons */{
           _0: {
-            head: c.head,
+            head: head,
             tail: {
               TAG: /* Lazy */1,
               _0: (function (param) {
-                  return lazyTake(cdr(c), n - 1 | 0);
+                  return lazyTake(v$1, n - 1 | 0);
                 })
             }
           }
@@ -209,21 +263,27 @@ function takeWhile(seq, test) {
     if (!input) {
       return /* Nil */0;
     }
-    var c = input._0;
-    if (!Curry._1(test, c.head)) {
-      return /* Nil */0;
+    var match = force(input._0);
+    var head = match.head;
+    var v = match.tail;
+    if (v.TAG === /* Forced */0) {
+      if (!Curry._1(test, head)) {
+        return /* Nil */0;
+      }
+      count.contents = count.contents + 1 | 0;
+      var tail = {
+        TAG: /* Forced */0,
+        _0: loop(v._0)
+      };
+      return /* Cons */{
+              _0: {
+                head: head,
+                tail: tail
+              }
+            };
     }
     count.contents = count.contents + 1 | 0;
-    var tail = {
-      TAG: /* Forced */0,
-      _0: loop(cdr(c))
-    };
-    return /* Cons */{
-            _0: {
-              head: c.head,
-              tail: tail
-            }
-          };
+    return /* Nil */0;
   };
   var l = loop(seq);
   return [
@@ -242,8 +302,15 @@ function drop(_seq, _n) {
     if (!seq) {
       return /* Nil */0;
     }
+    var wait = force(seq._0);
+    var v = wait.tail;
+    if (v.TAG !== /* Forced */0) {
+      return /* Cons */{
+              _0: wait
+            };
+    }
     _n = n - 1 | 0;
-    _seq = cdr(seq._0);
+    _seq = v._0;
     continue ;
   };
 }
@@ -256,160 +323,31 @@ function dropWhile(seq, test) {
     var count = _count;
     if (!input) {
       return [
-              0,
+              count,
               /* Nil */0
             ];
     }
-    var c = input._0;
-    if (!Curry._1(test, c.head)) {
+    var wait = force(input._0);
+    var v = wait.tail;
+    if (v.TAG !== /* Forced */0) {
       return [
               count,
-              input
+              /* Cons */{
+                _0: wait
+              }
             ];
     }
-    _input = cdr(c);
+    var v$1 = v._0;
+    if (!Curry._1(test, wait.head)) {
+      return [
+              count,
+              v$1
+            ];
+    }
+    _input = v$1;
     _count = count + 1 | 0;
     continue ;
   };
-}
-
-function reduce(_seq, _n, f, _acc) {
-  while(true) {
-    var acc = _acc;
-    var n = _n;
-    var seq = _seq;
-    if (n === 0) {
-      return [
-              acc,
-              seq
-            ];
-    }
-    if (!seq) {
-      return [
-              acc,
-              seq
-            ];
-    }
-    var c = seq._0;
-    _acc = Curry._2(f, acc, c.head);
-    _n = n - 1 | 0;
-    _seq = cdr(c);
-    continue ;
-  };
-}
-
-function reduceWhile(seq, test, f, acc) {
-  var _input = seq;
-  var _acc = acc;
-  var _index = 0;
-  while(true) {
-    var index = _index;
-    var acc$1 = _acc;
-    var input = _input;
-    if (!input) {
-      return [
-              acc$1,
-              index,
-              input
-            ];
-    }
-    var c = input._0;
-    if (!Curry._1(test, c.head)) {
-      return [
-              acc$1,
-              index,
-              input
-            ];
-    }
-    _index = index + 1 | 0;
-    _acc = Curry._2(f, acc$1, c.head);
-    _input = cdr(c);
-    continue ;
-  };
-}
-
-function reduceWhile2(seq, f, acc) {
-  var _input = seq;
-  var _acc = acc;
-  var _index = 0;
-  while(true) {
-    var index = _index;
-    var acc$1 = _acc;
-    var input = _input;
-    if (!input) {
-      return [
-              acc$1,
-              index,
-              input
-            ];
-    }
-    var c = input._0;
-    var acc$2 = Curry._3(f, acc$1, c.head, index);
-    if (acc$2 === undefined) {
-      return [
-              acc$1,
-              index,
-              input
-            ];
-    }
-    _index = index + 1 | 0;
-    _acc = Caml_option.valFromOption(acc$2);
-    _input = cdr(c);
-    continue ;
-  };
-}
-
-function match(equal, seq, lst) {
-  var eq = equal !== undefined ? equal : Caml_obj.caml_equal;
-  var _index = 0;
-  var _input = seq;
-  var _lst = lst;
-  while(true) {
-    var lst$1 = _lst;
-    var input = _input;
-    var index = _index;
-    if (!lst$1) {
-      return index;
-    }
-    if (!input) {
-      return index;
-    }
-    var c0 = input._0;
-    var c1 = lst$1._0;
-    if (!Curry._2(eq, c0.head, c1.head)) {
-      return index;
-    }
-    _lst = cdr(c1);
-    _input = cdr(c0);
-    _index = index + 1 | 0;
-    continue ;
-  };
-}
-
-function takeListCount(seq, n) {
-  var count = {
-    contents: 0
-  };
-  var loop = function (seq, n, got) {
-    if (n === 0) {
-      count.contents = got;
-      return /* [] */0;
-    }
-    if (seq) {
-      var c = seq._0;
-      return {
-              hd: c.head,
-              tl: loop(cdr(c), n - 1 | 0, got + 1 | 0)
-            };
-    }
-    count.contents = got;
-    return /* [] */0;
-  };
-  var l = loop(seq, n, 0);
-  return [
-          count.contents,
-          l
-        ];
 }
 
 function fromList(lst) {
@@ -479,7 +417,15 @@ function fromArrayInPlace(arr) {
             }
           };
   };
-  return gen(undefined);
+  var s = gen(undefined);
+  if (s !== undefined) {
+    return s;
+  }
+  throw {
+        RE_EXN_ID: Err,
+        _1: "unreachable",
+        Error: new Error()
+      };
 }
 
 function fromArray(arr) {
@@ -501,7 +447,15 @@ function fromArray(arr) {
       return /* Nil */0;
     }
   };
-  return gen(0);
+  var s = gen(0);
+  if (s !== undefined) {
+    return s;
+  }
+  throw {
+        RE_EXN_ID: Err,
+        _1: "unreachable",
+        Error: new Error()
+      };
 }
 
 function fromString(str) {
@@ -523,29 +477,36 @@ function fromString(str) {
             };
     }
   };
-  return gen(0);
+  var s = gen(0);
+  if (s !== undefined) {
+    return s;
+  }
+  throw {
+        RE_EXN_ID: Err,
+        _1: "unreachable",
+        Error: new Error()
+      };
 }
+
+var next = cdr;
 
 exports.Err = Err;
 exports.force = force;
 exports.car = car;
 exports.cdr = cdr;
+exports.next = next;
 exports.cons = cons;
 exports.make = make;
 exports.equal = equal;
 exports.map = map;
 exports.append = append;
 exports.countForced = countForced;
+exports.consWait = consWait;
 exports.take = take;
 exports.lazyTake = lazyTake;
 exports.takeWhile = takeWhile;
 exports.drop = drop;
 exports.dropWhile = dropWhile;
-exports.reduce = reduce;
-exports.reduceWhile = reduceWhile;
-exports.reduceWhile2 = reduceWhile2;
-exports.match = match;
-exports.takeListCount = takeListCount;
 exports.fromList = fromList;
 exports.fromArrayInPlace = fromArrayInPlace;
 exports.fromArray = fromArray;
