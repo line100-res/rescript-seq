@@ -11,9 +11,15 @@ and tail<'a> =
 
 exception Err(string)
 
+let unwrap = (opt) => {
+  switch opt {
+  | Some(v) => v
+  | None => raise(Err("unwrap None error."))
+  }
+}
+
 let force = cons => {
-  let {tail} = cons
-  cons.tail = switch tail {
+  cons.tail = switch cons.tail {
   | Forced(s) => Forced(s)
   | Lazy(thunk) => {
       let ret = thunk()
@@ -44,6 +50,21 @@ let cons = (head, tail) => {
   Cons({head: head, tail: tail})
 }
 
+let consWait = (head, wait, then) => {
+  cons(
+    head,
+    Lazy(
+      () => {
+        switch wait() {
+        | Some(v) => Some(then(v))
+        | None => None
+        }
+      },
+    ),
+  )
+}
+
+
 // create a lazy seq
 let make = (~thunk=?, head) => {
   switch thunk {
@@ -52,21 +73,75 @@ let make = (~thunk=?, head) => {
   }
 }
 
-let rec equal = (seq1, seq2) => {
-  switch (seq1, seq2) {
-  | (Nil, Nil) => true
-  | (Cons(c1), Cons(c2)) =>
-    if c1.head == c2.head {
-      switch (cdr(c1), cdr(c2)) {
-      | (None, _) | (_, None) => false
-      | (Some(t1), Some(t2)) => equal(t1, t2)
+// conditional operator
+// isEmpty, equal, match, every
+
+let isEmpty = lst => {
+  switch lst {
+  | Nil => true
+  | _ => false
+  }
+}
+
+let equal = (~equalf=?, seq1, seq2) => {
+  let eq = switch equalf {
+  | None => (a, b) => a == b
+  | Some(f) => f
+  }
+  let rec loop = (seq1, seq2) =>
+    switch (seq1, seq2) {
+    | (Nil, Nil) => true
+    | (Cons(c1), Cons(c2)) =>
+      if eq(c1.head, c2.head) {
+        switch (cdr(c1), cdr(c2)) {
+        | (None, _) | (_, None) => false
+        | (Some(t1), Some(t2)) => loop(t1, t2)
+        }
+      } else {
+        false
+      }
+    | (_, _) => false
+    }
+  loop(seq1, seq2)
+}
+
+let match = (~equal=?, seq, lst) => {
+  let eq = switch equal {
+  | None => (a, b) => a == b
+  | Some(f) => f
+  }
+  let rec loop = (index, s, l) => {
+    switch (s, l) {
+    | (Nil, _) | (_, list{}) => index
+    | (Cons(sc), list{lh, ...lt}) => if eq(sc.head, lh) {
+        switch cdr(sc) {
+        | Some(t) => loop(index + 1, t, lt)
+        | None => index
+        }
+      } else {
+        index
+      }
+    }
+  }
+  loop(0, seq, lst)
+}
+
+let rec every = (seq, test) => {
+  switch seq {
+  | Nil => false
+  | Cons(c) => if test(c.head) {
+      switch cdr(c) {
+      | None => false
+      | Some(t) => every(t, test)
       }
     } else {
       false
     }
-  | (_, _) => false
   }
 }
+
+// transformation operator
+// map, append
 
 let rec map = (seq, f) => {
   switch seq {
@@ -118,21 +193,8 @@ let countForced = seq => {
   loop(0, seq)
 }
 
+// filtering operators
 // take, takeWhile, lazyTake
-
-let consWait = (head, wait, then) => {
-  cons(
-    head,
-    Lazy(
-      () => {
-        switch wait() {
-        | Some(v) => Some(then(v))
-        | None => None
-        }
-      },
-    ),
-  )
-}
 
 let rec take = (seq: t<'a>, n) => {
   if n == 0 {
@@ -179,10 +241,10 @@ let takeWhile = (seq, test) => {
         } else {
           Nil
         }
-      | {_, tail: Lazy(_)} => {
-        count := count.contents + 1
-        Nil
-      }
+      | {tail: Lazy(_)} => {
+          count := count.contents + 1
+          Nil
+        }
       }
     }
   }
@@ -198,12 +260,11 @@ let rec drop = (seq, n) => {
   } else {
     switch seq {
     | Nil => Nil
-    | Cons(c) => {
-        switch force(c) {
-        | {tail: Forced(v)} => drop(v, n - 1)
-        | wait => Cons(wait)
-        }
-    }
+    | Cons(c) =>
+      switch force(c) {
+      | {tail: Forced(v)} => drop(v, n - 1)
+      | wait => Cons(wait)
+      }
     }
   }
 }
@@ -213,18 +274,15 @@ let dropWhile = (seq, test) => {
     switch input {
     | Nil => (count, Nil)
     | Cons(c) =>
-        switch force(c) {
-        | {head, tail: Forced(v)} => {
-          if test(head) {
-            loop(count + 1, v)
-          } else {
-            (count, v)
-          }
+      switch force(c) {
+      | {head, tail: Forced(v)} =>
+        if test(head) {
+          loop(count + 1, v)
+        } else {
+          (count, v)
         }
-        | wait => {
-          (count, Cons(wait))
-        }
-        }
+      | wait => (count, Cons(wait))
+      }
     }
   }
   loop(0, seq)
@@ -272,37 +330,19 @@ let dropWhile = (seq, test) => {
 //   loop(seq, acc, 0)
 // }
 
-// match
-
-// let match = (~equal=?, seq, lst) => {
-//   let eq = switch equal {
-//   | None => (a, b) => a == b
-//   | Some(f) => f
+// switch lst {
+// | Nil => index
+// | Cons(c1) =>
+//   switch input {
+//   | Nil => index
+//   | Cons(c0) =>
+//     if eq(c0.head, c1.head) {
+//       loop(index + 1, cdr(c0), cdr(c1))
+//     } else {
+//       index
+//     }
 //   }
-//   let rec loop = (index, s, l) => {
-    // switch (s, l) {
-    // | (Nil, _) | (_, Nil) => index
-    // | (Cons(sc), Cons(lc)) => {
-    //   switch (force(sc), force(lc)) {
-    //   | ({}) => expression
-    //   | pattern2 => expression
-    //   }
-    // }
-    // }
-
-    // switch lst {
-    // | Nil => index
-    // | Cons(c1) =>
-    //   switch input {
-    //   | Nil => index
-    //   | Cons(c0) =>
-    //     if eq(c0.head, c1.head) {
-    //       loop(index + 1, cdr(c0), cdr(c1))
-    //     } else {
-    //       index
-    //     }
-    //   }
-    // }
+// }
 //   }
 //   loop(0, seq, lst)
 // }
@@ -329,7 +369,8 @@ let dropWhile = (seq, test) => {
 //   (count.contents, l)
 // }
 
-// fromList, fromArray
+// creation operators
+// fromList, fromArray, fromArrayInPlace, fromString
 
 let rec fromList = lst => {
   switch lst {

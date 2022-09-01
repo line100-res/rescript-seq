@@ -9,16 +9,27 @@ var Caml_exceptions = require("rescript/lib/js/caml_exceptions.js");
 
 var Err = /* @__PURE__ */Caml_exceptions.create("Seq.Err");
 
+function unwrap(opt) {
+  if (opt !== undefined) {
+    return Caml_option.valFromOption(opt);
+  }
+  throw {
+        RE_EXN_ID: Err,
+        _1: "unwrap None error.",
+        Error: new Error()
+      };
+}
+
 function force(cons) {
-  var tail = cons.tail;
+  var s = cons.tail;
   var tmp;
-  if (tail.TAG === /* Forced */0) {
+  if (s.TAG === /* Forced */0) {
     tmp = {
       TAG: /* Forced */0,
-      _0: tail._0
+      _0: s._0
     };
   } else {
-    var thunk = tail._0;
+    var thunk = s._0;
     var ret = Curry._1(thunk, undefined);
     tmp = ret !== undefined ? ({
           TAG: /* Forced */0,
@@ -54,6 +65,24 @@ function cons(head, tail) {
         };
 }
 
+function consWait(head, wait, $$then) {
+  return /* Cons */{
+          _0: {
+            head: head,
+            tail: {
+              TAG: /* Lazy */1,
+              _0: (function (param) {
+                  var v = Curry._1(wait, undefined);
+                  if (v !== undefined) {
+                    return Curry._1($$then, Caml_option.valFromOption(v));
+                  }
+                  
+                })
+            }
+          }
+        };
+}
+
 function make(thunk, head) {
   if (thunk !== undefined) {
     return /* Cons */{
@@ -78,23 +107,34 @@ function make(thunk, head) {
   }
 }
 
-function equal(_seq1, _seq2) {
+function isEmpty(lst) {
+  if (lst) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+function equal(equalf, seq1, seq2) {
+  var eq = equalf !== undefined ? equalf : Caml_obj.caml_equal;
+  var _seq1 = seq1;
+  var _seq2 = seq2;
   while(true) {
-    var seq2 = _seq2;
-    var seq1 = _seq1;
-    if (!seq1) {
-      if (seq2) {
+    var seq2$1 = _seq2;
+    var seq1$1 = _seq1;
+    if (!seq1$1) {
+      if (seq2$1) {
         return false;
       } else {
         return true;
       }
     }
-    if (!seq2) {
+    if (!seq2$1) {
       return false;
     }
-    var c2 = seq2._0;
-    var c1 = seq1._0;
-    if (!Caml_obj.caml_equal(c1.head, c2.head)) {
+    var c2 = seq2$1._0;
+    var c1 = seq1$1._0;
+    if (!Curry._2(eq, c1.head, c2.head)) {
       return false;
     }
     var match = cdr(c1);
@@ -107,6 +147,55 @@ function equal(_seq1, _seq2) {
     }
     _seq2 = match$1;
     _seq1 = match;
+    continue ;
+  };
+}
+
+function match(equal, seq, lst) {
+  var eq = equal !== undefined ? equal : Caml_obj.caml_equal;
+  var _index = 0;
+  var _s = seq;
+  var _l = lst;
+  while(true) {
+    var l = _l;
+    var s = _s;
+    var index = _index;
+    if (!s) {
+      return index;
+    }
+    if (!l) {
+      return index;
+    }
+    var sc = s._0;
+    if (!Curry._2(eq, sc.head, l.hd)) {
+      return index;
+    }
+    var t = cdr(sc);
+    if (t === undefined) {
+      return index;
+    }
+    _l = l.tl;
+    _s = t;
+    _index = index + 1 | 0;
+    continue ;
+  };
+}
+
+function every(_seq, test) {
+  while(true) {
+    var seq = _seq;
+    if (!seq) {
+      return false;
+    }
+    var c = seq._0;
+    if (!Curry._1(test, c.head)) {
+      return false;
+    }
+    var t = cdr(c);
+    if (t === undefined) {
+      return false;
+    }
+    _seq = t;
     continue ;
   };
 }
@@ -179,24 +268,6 @@ function countForced(seq) {
     _index = index + 1 | 0;
     continue ;
   };
-}
-
-function consWait(head, wait, $$then) {
-  return /* Cons */{
-          _0: {
-            head: head,
-            tail: {
-              TAG: /* Lazy */1,
-              _0: (function (param) {
-                  var v = Curry._1(wait, undefined);
-                  if (v !== undefined) {
-                    return Curry._1($$then, Caml_option.valFromOption(v));
-                  }
-                  
-                })
-            }
-          }
-        };
 }
 
 function take(seq, n) {
@@ -491,17 +562,21 @@ function fromString(str) {
 var next = cdr;
 
 exports.Err = Err;
+exports.unwrap = unwrap;
 exports.force = force;
 exports.car = car;
 exports.cdr = cdr;
 exports.next = next;
 exports.cons = cons;
+exports.consWait = consWait;
 exports.make = make;
+exports.isEmpty = isEmpty;
 exports.equal = equal;
+exports.match = match;
+exports.every = every;
 exports.map = map;
 exports.append = append;
 exports.countForced = countForced;
-exports.consWait = consWait;
 exports.take = take;
 exports.lazyTake = lazyTake;
 exports.takeWhile = takeWhile;

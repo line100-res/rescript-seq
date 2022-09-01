@@ -10,8 +10,7 @@ let stringEqual = (~message=?, a: string, b: string) =>
 
 let seqEqual = (~message=?, seq: Seq.t<'a>, lst: list<'a>) => {
   let len1 = List.length(lst)
-  let mathcer = lst->Seq.fromList
-  let ret = Seq.match(seq, mathcer)
+  let ret = Seq.match(seq, lst)
   let (len0, isForced) = Seq.countForced(seq)
   assertion(~message="[seq is forced]", ~operator="seqEqual", identity, isForced, true)
   assertion(~message="[length is equal]", ~operator="seqEqual", identity, len0, len1)
