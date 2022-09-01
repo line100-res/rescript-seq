@@ -38,8 +38,8 @@ let first3 = Seq.take(seq, 3) // 0 -> 1 -> 2
 - [x] append: `(t<'a>, t<'a>) => t<'a>`
 
 ### filtering operators
-- take: `(t<'a>, int) => t<'a>`
-- takeLazy: `(t<'a>, int) => t<'a>`
-- takeWhile: `(t<'a>, 'a => bool) => t<'a>`
-- drop: `(t<'a>, int) => t<'a>`
-- dropWhile: `(t<'a>, 'a => bool) => t<'a>`
+- [x] take: `(t<'a>, int) => t<'a>`
+- [x] takeLazy: `(t<'a>, int) => t<'a>`
+- [ ] takeWhile: `(t<'a>, 'a => bool) => t<'a>`
+- [x] drop: `(t<'a>, int) => t<'a>`
+- [x] dropWhile: `(t<'a>, 'a => bool) => t<'a>`
