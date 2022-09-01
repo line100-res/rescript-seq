@@ -64,23 +64,35 @@ test("test seq match", () => {
   seqEqual(~message="array seq match should be 3", arr, list{"a", "b", "c"})
 })
 
-// test("test takeListCount", () => {
-//   let seq = [1, 2, 3, 4, 5] -> Seq.fromArray
-//   let (count, l) = Seq.takeListCount(seq, 3)
-//   intEqual(~message="count is 3", count, 3)
-//   seqEqual(~message="seq is 1 2 3", l -> Seq.fromList, list{1, 2, 3})
+test("test seq append", () => {
+  let s1 = Seq.fromArray([1, 2])
+  let s2 = Seq.fromArray([3])
+  seqEqual(~message="seq 1 2 + seq 3, is seq 1 2 3", Seq.append(s1, () => s2), list{1, 2, 3})
+})
 
-//   let (count, l) = Seq.takeListCount(seq, 10)
-//   intEqual(~message="count is 5", count, 5)
-//   seqEqual(~message="seq is 1 2 3 4 5", l -> Seq.fromList, list{1, 2, 3, 4, 5})
-// })
+let rec createInfinitSeq = (i) =>
+  Seq.cons(i, Seq.Lazy(() => Some(createInfinitSeq(i + 1))))
 
-test("infinit seq", () => {
-  let rec createInfinitSeq = (i) =>
-    Seq.cons(i, Seq.Lazy(() => Some(createInfinitSeq(i + 1))))
-
+test("infinit seq take 3", () => {
   let seq = createInfinitSeq(0)
   let first3 = Seq.take(seq, 3)
+  seqEqual(~message="take first 3 from infinit list", first3, list{0, 1, 2})
 
-  seqEqual(~message="get first 3 from infinit list", first3, list{0, 1, 2})
+  let first3 = Seq.lazyTake(seq, 3)
+  seqEqual(~message="lazyTake first 3 from infinit list", first3, list{0, 1, 2})
+
+  let first3 = Seq.takeWhile(seq, v => v < 3)
+  seqEqual(~message="takeWhile v < 3 from infinit list", first3, list{0, 1, 2})
+
+  let first3 = Seq.lazyTakeWhile(seq, v => v < 3)
+  seqEqual(~message="lazyTakeWhile v < 3 from infinit list", first3, list{0, 1, 2})
+})
+
+test("infinit seq map + 1", () => {
+  let seq = createInfinitSeq(0)
+  let first3 = seq->Seq.take(3)->Seq.map(v => v + 1)
+  seqEqual(~message="map v + 1 after take first 3 from infinit list", first3, list{1, 2, 3})
+
+  let first3 = seq->Seq.lazyMap(v => v + 1)->Seq.take(3)
+  seqEqual(~message="lazyMap v + 1 before take first 3 from infinit list", first3, list{1, 2, 3})
 })

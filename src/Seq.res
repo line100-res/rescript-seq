@@ -11,7 +11,7 @@ and tail<'a> =
 
 exception Err(string)
 
-let unwrap = (opt) => {
+let unwrap = opt => {
   switch opt {
   | Some(v) => v
   | None => raise(Err("unwrap None error."))
@@ -64,6 +64,33 @@ let consWait = (head, wait, then) => {
   )
 }
 
+let consMapTail = (c, f) => {
+  switch force(c) {
+  | {head, tail: Forced(t)} => cons(head, Forced(f(t))) 
+  | {head, tail: Lazy(wait)} => consWait(head, wait, f)
+  }
+}
+
+let lazyConsMapTail = (c, f) => {
+  switch force(c) {
+  | {head, tail: Forced(t)} => cons(head, Lazy(() => Some(f(t))))
+  | {head, tail: Lazy(wait)} => consWait(head, wait, f)
+  }
+}
+
+let consMap = (c, fh, ft) => {
+  switch force(c) {
+  | {head, tail: Forced(t)} => cons(fh(head), Forced(ft(t))) 
+  | {head, tail: Lazy(wait)} => consWait(fh(head), wait, ft)
+  }
+}
+
+let lazyConsMap = (c, fh, ft) => {
+  switch force(c) {
+  | {head, tail: Forced(t)} => cons(fh(head), Lazy(() => Some(ft(t))))
+  | {head, tail: Lazy(wait)} => consWait(fh(head), wait, ft)
+  }
+}
 
 // create a lazy seq
 let make = (~thunk=?, head) => {
@@ -113,7 +140,8 @@ let match = (~equal=?, seq, lst) => {
   let rec loop = (index, s, l) => {
     switch (s, l) {
     | (Nil, _) | (_, list{}) => index
-    | (Cons(sc), list{lh, ...lt}) => if eq(sc.head, lh) {
+    | (Cons(sc), list{lh, ...lt}) =>
+      if eq(sc.head, lh) {
         switch cdr(sc) {
         | Some(t) => loop(index + 1, t, lt)
         | None => index
@@ -129,7 +157,8 @@ let match = (~equal=?, seq, lst) => {
 let rec every = (seq, test) => {
   switch seq {
   | Nil => false
-  | Cons(c) => if test(c.head) {
+  | Cons(c) =>
+    if test(c.head) {
       switch cdr(c) {
       | None => false
       | Some(t) => every(t, test)
@@ -141,23 +170,19 @@ let rec every = (seq, test) => {
 }
 
 // transformation operator
-// map, append
+// map, lazyMap, append
 
 let rec map = (seq, f) => {
   switch seq {
   | Nil => Nil
-  | Cons(c) =>
-    cons(
-      f(c.head),
-      Lazy(
-        () => {
-          switch cdr(c) {
-          | Some(t) => Some(map(t, f))
-          | None => None
-          }
-        },
-      ),
-    )
+  | Cons(c) => consMap(c, f, t => map(t, f))
+  }
+}
+
+let rec lazyMap = (seq, f) => {
+  switch seq {
+  | Nil => Nil
+  | Cons(c) => lazyConsMap(c, f, t => lazyMap(t, f))
   }
 }
 
@@ -202,11 +227,7 @@ let rec take = (seq: t<'a>, n) => {
   } else {
     switch seq {
     | Nil => Nil
-    | Cons(c) =>
-      switch force(c) {
-      | {head, tail: Forced(v)} => cons(head, Forced(take(v, n - 1)))
-      | {head, tail: Lazy(wait)} => consWait(head, wait, v => take(v, n - 1))
-      }
+    | Cons(c) => consMapTail(c, v => take(v, n - 1))
     }
   }
 }
@@ -217,39 +238,33 @@ let rec lazyTake = (seq, n) => {
   } else {
     switch seq {
     | Nil => Nil
-    | Cons(c) =>
-      switch force(c) {
-      | {head, tail: Forced(v)} => cons(head, Lazy(() => Some(lazyTake(v, n - 1))))
-      | {head, tail: Lazy(wait)} => consWait(head, wait, v => lazyTake(v, n - 1))
-      }
+    | Cons(c) => lazyConsMapTail(c, v => lazyTake(v, n - 1))
     }
   }
 }
 
-// FIXME: 拆分takeWhileCount和takeWhile
-let takeWhile = (seq, test) => {
-  let count = ref(0)
-  let rec loop = input => {
-    switch input {
-    | Nil => Nil
-    | Cons(c) =>
-      switch force(c) {
-      | {head, tail: Forced(v)} =>
-        if test(head) {
-          count := count.contents + 1
-          cons(head, Forced(loop(v)))
-        } else {
-          Nil
-        }
-      | {tail: Lazy(_)} => {
-          count := count.contents + 1
-          Nil
-        }
-      }
+let rec takeWhile = (seq, test) => {
+  switch seq {
+  | Nil => Nil
+  | Cons(c) =>
+    if test(c.head) {
+      consMapTail(c, v => takeWhile(v, test))
+    } else {
+      Nil
     }
   }
-  let l = loop(seq)
-  (count.contents, l)
+}
+
+let rec lazyTakeWhile = (seq, test) => {
+  switch seq {
+  | Nil => Nil
+  | Cons(c) =>
+    if test(c.head) {
+      lazyConsMapTail(c, v => lazyTakeWhile(v, test))
+    } else {
+      Nil
+    }
+  }
 }
 
 // drop, dropWhile
@@ -392,10 +407,7 @@ let fromArrayInPlace = (arr: array<'a>) => {
       }
     }
   }
-  switch gen() {
-  | Some(s) => s
-  | None => raise(Err("unreachable"))
-  }
+  unwrap(gen())
 }
 
 let fromArray = (arr: array<'a>) => {
@@ -405,10 +417,7 @@ let fromArray = (arr: array<'a>) => {
     | Some(a) => Some(cons(a, Lazy(() => gen(index + 1))))
     }
   }
-  switch gen(0) {
-  | Some(s) => s
-  | None => raise(Err("unreachable"))
-  }
+  unwrap(gen(0))
 }
 
 let fromString = str => {
@@ -418,8 +427,5 @@ let fromString = str => {
     | c => Some(cons(c, Lazy(() => gen(index + 1))))
     }
   }
-  switch gen(0) {
-  | Some(s) => s
-  | None => raise(Err("unreachable"))
-  }
+  unwrap(gen(0))
 }

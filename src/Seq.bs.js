@@ -83,6 +83,88 @@ function consWait(head, wait, $$then) {
         };
 }
 
+function consMapTail(c, f) {
+  var match = force(c);
+  var head = match.head;
+  var t = match.tail;
+  if (t.TAG !== /* Forced */0) {
+    return consWait(head, t._0, f);
+  }
+  var tail = {
+    TAG: /* Forced */0,
+    _0: Curry._1(f, t._0)
+  };
+  return /* Cons */{
+          _0: {
+            head: head,
+            tail: tail
+          }
+        };
+}
+
+function lazyConsMapTail(c, f) {
+  var match = force(c);
+  var head = match.head;
+  var t = match.tail;
+  if (t.TAG !== /* Forced */0) {
+    return consWait(head, t._0, f);
+  }
+  var t$1 = t._0;
+  return /* Cons */{
+          _0: {
+            head: head,
+            tail: {
+              TAG: /* Lazy */1,
+              _0: (function (param) {
+                  return Curry._1(f, t$1);
+                })
+            }
+          }
+        };
+}
+
+function consMap(c, fh, ft) {
+  var match = force(c);
+  var head = match.head;
+  var t = match.tail;
+  if (t.TAG !== /* Forced */0) {
+    return consWait(Curry._1(fh, head), t._0, ft);
+  }
+  var tail = {
+    TAG: /* Forced */0,
+    _0: Curry._1(ft, t._0)
+  };
+  var head$1 = Curry._1(fh, head);
+  return /* Cons */{
+          _0: {
+            head: head$1,
+            tail: tail
+          }
+        };
+}
+
+function lazyConsMap(c, fh, ft) {
+  var match = force(c);
+  var head = match.head;
+  var t = match.tail;
+  if (t.TAG !== /* Forced */0) {
+    return consWait(Curry._1(fh, head), t._0, ft);
+  }
+  var t$1 = t._0;
+  var head$1 = Curry._1(fh, head);
+  return /* Cons */{
+          _0: {
+            head: head$1,
+            tail: {
+              TAG: /* Lazy */1,
+              _0: (function (param) {
+                  return Curry._1(ft, t$1);
+                })
+            }
+          }
+        };
+}
+
 function make(thunk, head) {
   if (thunk !== undefined) {
     return /* Cons */{
@@ -201,26 +283,23 @@ function every(_seq, test) {
 }
 
 function map(seq, f) {
-  if (!seq) {
+  if (seq) {
+    return consMap(seq._0, f, (function (t) {
+                  return map(t, f);
+                }));
+  } else {
     return /* Nil */0;
   }
-  var c = seq._0;
-  var head = Curry._1(f, c.head);
-  return /* Cons */{
-          _0: {
-            head: head,
-            tail: {
-              TAG: /* Lazy */1,
-              _0: (function (param) {
-                  var t = cdr(c);
-                  if (t !== undefined) {
-                    return map(t, f);
-                  }
-                  
-                })
-            }
-          }
-        };
+}
+
+function lazyMap(seq, f) {
+  if (seq) {
+    return lazyConsMap(seq._0, f, (function (t) {
+                  return lazyMap(t, f);
+                }));
+  } else {
+    return /* Nil */0;
+  }
 }
 
 function append(seq, thunk) {
@@ -271,96 +350,51 @@ function countForced(seq) {
 }
 
 function take(seq, n) {
-  if (n === 0) {
+  if (n === 0 || !seq) {
     return /* Nil */0;
-  }
-  if (!seq) {
-    return /* Nil */0;
-  }
-  var match = force(seq._0);
-  var head = match.head;
-  var v = match.tail;
-  if (v.TAG !== /* Forced */0) {
-    return consWait(head, v._0, (function (v) {
+  } else {
+    return consMapTail(seq._0, (function (v) {
                   return take(v, n - 1 | 0);
                 }));
   }
-  var tail = {
-    TAG: /* Forced */0,
-    _0: take(v._0, n - 1 | 0)
-  };
-  return /* Cons */{
-          _0: {
-            head: head,
-            tail: tail
-          }
-        };
 }
 
 function lazyTake(seq, n) {
-  if (n === 0) {
+  if (n === 0 || !seq) {
     return /* Nil */0;
-  }
-  if (!seq) {
-    return /* Nil */0;
-  }
-  var match = force(seq._0);
-  var head = match.head;
-  var v = match.tail;
-  if (v.TAG !== /* Forced */0) {
-    return consWait(head, v._0, (function (v) {
+  } else {
+    return lazyConsMapTail(seq._0, (function (v) {
                   return lazyTake(v, n - 1 | 0);
                 }));
   }
-  var v$1 = v._0;
-  return /* Cons */{
-          _0: {
-            head: head,
-            tail: {
-              TAG: /* Lazy */1,
-              _0: (function (param) {
-                  return lazyTake(v$1, n - 1 | 0);
-                })
-            }
-          }
-        };
 }
 
 function takeWhile(seq, test) {
-  var count = {
-    contents: 0
-  };
-  var loop = function (input) {
-    if (!input) {
-      return /* Nil */0;
-    }
-    var match = force(input._0);
-    var head = match.head;
-    var v = match.tail;
-    if (v.TAG === /* Forced */0) {
-      if (!Curry._1(test, head)) {
-        return /* Nil */0;
-      }
-      count.contents = count.contents + 1 | 0;
-      var tail = {
-        TAG: /* Forced */0,
-        _0: loop(v._0)
-      };
-      return /* Cons */{
-              _0: {
-                head: head,
-                tail: tail
-              }
-            };
-    }
-    count.contents = count.contents + 1 | 0;
+  if (!seq) {
     return /* Nil */0;
-  };
-  var l = loop(seq);
-  return [
-          count.contents,
-          l
-        ];
+  }
+  var c = seq._0;
+  if (Curry._1(test, c.head)) {
+    return consMapTail(c, (function (v) {
+                  return takeWhile(v, test);
+                }));
+  } else {
+    return /* Nil */0;
+  }
+}
+
+function lazyTakeWhile(seq, test) {
+  if (!seq) {
+    return /* Nil */0;
+  }
+  var c = seq._0;
+  if (Curry._1(test, c.head)) {
+    return lazyConsMapTail(c, (function (v) {
+                  return lazyTakeWhile(v, test);
+                }));
+  } else {
+    return /* Nil */0;
+  }
 }
 
 function drop(_seq, _n) {
@@ -488,15 +522,7 @@ function fromArrayInPlace(arr) {
             }
           };
   };
-  var s = gen(undefined);
-  if (s !== undefined) {
-    return s;
-  }
-  throw {
-        RE_EXN_ID: Err,
-        _1: "unreachable",
-        Error: new Error()
-      };
+  return unwrap(gen(undefined));
 }
 
 function fromArray(arr) {
@@ -518,15 +544,7 @@ function fromArray(arr) {
       return /* Nil */0;
     }
   };
-  var s = gen(0);
-  if (s !== undefined) {
-    return s;
-  }
-  throw {
-        RE_EXN_ID: Err,
-        _1: "unreachable",
-        Error: new Error()
-      };
+  return unwrap(gen(0));
 }
 
 function fromString(str) {
@@ -548,15 +566,7 @@ function fromString(str) {
             };
     }
   };
-  var s = gen(0);
-  if (s !== undefined) {
-    return s;
-  }
-  throw {
-        RE_EXN_ID: Err,
-        _1: "unreachable",
-        Error: new Error()
-      };
+  return unwrap(gen(0));
 }
 
 var next = cdr;
@@ -569,17 +579,23 @@ exports.cdr = cdr;
 exports.next = next;
 exports.cons = cons;
 exports.consWait = consWait;
+exports.consMapTail = consMapTail;
+exports.lazyConsMapTail = lazyConsMapTail;
+exports.consMap = consMap;
+exports.lazyConsMap = lazyConsMap;
 exports.make = make;
 exports.isEmpty = isEmpty;
 exports.equal = equal;
 exports.match = match;
 exports.every = every;
 exports.map = map;
+exports.lazyMap = lazyMap;
 exports.append = append;
 exports.countForced = countForced;
 exports.take = take;
 exports.lazyTake = lazyTake;
 exports.takeWhile = takeWhile;
+exports.lazyTakeWhile = lazyTakeWhile;
 exports.drop = drop;
 exports.dropWhile = dropWhile;
 exports.fromList = fromList;

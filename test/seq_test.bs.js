@@ -110,18 +110,76 @@ Test.test("test seq match", (function (param) {
                   });
       }));
 
-Test.test("infinit seq", (function (param) {
-        var createInfinitSeq = function (i) {
-          return Seq.cons(i, {
-                      TAG: /* Lazy */1,
-                      _0: (function (param) {
-                          return createInfinitSeq(i + 1 | 0);
-                        })
-                    });
-        };
+Test.test("test seq append", (function (param) {
+        var s1 = Seq.fromArray([
+              1,
+              2
+            ]);
+        var s2 = Seq.fromArray([3]);
+        return TestUtils.seqEqual("seq 1 2 + seq 3, is seq 1 2 3", Seq.append(s1, (function (param) {
+                          return s2;
+                        })), {
+                    hd: 1,
+                    tl: {
+                      hd: 2,
+                      tl: {
+                        hd: 3,
+                        tl: /* [] */0
+                      }
+                    }
+                  });
+      }));
+
+function createInfinitSeq(i) {
+  return Seq.cons(i, {
+              TAG: /* Lazy */1,
+              _0: (function (param) {
+                  return createInfinitSeq(i + 1 | 0);
+                })
+            });
+}
+
+Test.test("infinit seq take 3", (function (param) {
         var seq = createInfinitSeq(0);
         var first3 = Seq.take(seq, 3);
-        return TestUtils.seqEqual("get first 3 from infinit list", first3, {
+        TestUtils.seqEqual("take first 3 from infinit list", first3, {
+              hd: 0,
+              tl: {
+                hd: 1,
+                tl: {
+                  hd: 2,
+                  tl: /* [] */0
+                }
+              }
+            });
+        var first3$1 = Seq.lazyTake(seq, 3);
+        TestUtils.seqEqual("lazyTake first 3 from infinit list", first3$1, {
+              hd: 0,
+              tl: {
+                hd: 1,
+                tl: {
+                  hd: 2,
+                  tl: /* [] */0
+                }
+              }
+            });
+        var first3$2 = Seq.takeWhile(seq, (function (v) {
+                return v < 3;
+              }));
+        TestUtils.seqEqual("takeWhile v < 3 from infinit list", first3$2, {
+              hd: 0,
+              tl: {
+                hd: 1,
+                tl: {
+                  hd: 2,
+                  tl: /* [] */0
+                }
+              }
+            });
+        var first3$3 = Seq.lazyTakeWhile(seq, (function (v) {
+                return v < 3;
+              }));
+        return TestUtils.seqEqual("lazyTakeWhile v < 3 from infinit list", first3$3, {
                     hd: 0,
                     tl: {
                       hd: 1,
@@ -133,7 +191,38 @@ Test.test("infinit seq", (function (param) {
                   });
       }));
 
+Test.test("infinit seq map + 1", (function (param) {
+        var seq = createInfinitSeq(0);
+        var first3 = Seq.map(Seq.take(seq, 3), (function (v) {
+                return v + 1 | 0;
+              }));
+        TestUtils.seqEqual("map v + 1 after take first 3 from infinit list", first3, {
+              hd: 1,
+              tl: {
+                hd: 2,
+                tl: {
+                  hd: 3,
+                  tl: /* [] */0
+                }
+              }
+            });
+        var first3$1 = Seq.take(Seq.lazyMap(seq, (function (v) {
+                    return v + 1 | 0;
+                  })), 3);
+        return TestUtils.seqEqual("lazyMap v + 1 before take first 3 from infinit list", first3$1, {
+                    hd: 1,
+                    tl: {
+                      hd: 2,
+                      tl: {
+                        hd: 3,
+                        tl: /* [] */0
+                      }
+                    }
+                  });
+      }));
+
 exports.Err = Err;
 exports.unwrap = unwrap;
 exports.createCharSeq = createCharSeq;
+exports.createInfinitSeq = createInfinitSeq;
 /*  Not a pure module */

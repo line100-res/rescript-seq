@@ -1,2 +1,3 @@
 # 0.1.0
-	* add `Wait` type on tail thunk
+	* refactor thunk from `() => Seq.t<'a>` to `() => option<Seq.t<'a>>`
+	* add lazyTake, lazyMap
