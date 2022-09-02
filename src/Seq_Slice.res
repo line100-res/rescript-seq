@@ -1,5 +1,6 @@
+open Seq_Core
 
-type t<'a> = (int, Seq.t<'a>)
+type t<'a> = (int, Seq_Core.t<'a>)
 
 exception Err(string)
 
@@ -15,8 +16,8 @@ exception Err(string)
 let car = slice => {
   let (_, seq) = slice
   switch seq {
-  | Seq.Nil => raise(Err("unexpected slice, which is Nil."))
-  | Seq.Cons(c) => Seq.car(c)
+  | Nil => raise(Err("unexpected slice, which is Nil."))
+  | Cons(c) => car(c)
   }
 }
 
@@ -26,27 +27,27 @@ let cdr = slice => {
     raise(Err("unexpected slice, which is 0 length."))
   } else {
     switch seq {
-    | Seq.Nil => raise(Err("unexpected slice, which is Nil."))
-    | Seq.Cons(c) => (len - 1, Seq.cdr(c))
+    | Nil => raise(Err("unexpected slice, which is Nil."))
+    | Cons(c) => (len - 1, cdr(c))
     }
   }
 }
 
 let toSeq = slice => {
   let (len, seq) = slice
-  Seq.take(seq, len)
+  take(seq, len)
 }
 
 let toLazySeq = slice => {
   let (len, seq) = slice
-  Seq.lazyTake(seq, len)
+  lazyTake(seq, len)
 }
 
 let seqSplitUnsafe = (seq, n) => {
-  ((n, seq), Seq.drop(seq, n))
+  ((n, seq), drop(seq, n))
 }
 
 let seqSplitWhile = (seq, test) => {
-  let (len, rest) = Seq.dropWhile(seq, test)
+  let (len, rest) = dropWhile(seq, test)
   ((len, seq), rest)
 }
