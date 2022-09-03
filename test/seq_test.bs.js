@@ -130,6 +130,77 @@ Test.test("test seq append", (function (param) {
                   });
       }));
 
+Test.test("test seq merge", (function (param) {
+        var s1 = Seq.fromArray([
+              1,
+              2
+            ]);
+        var s2 = Seq.fromArray([3]);
+        TestUtils.seqEqual("seq 1 2 merge seq 3, is seq 1 3 2", Seq.merge(s1, s2), {
+              hd: 1,
+              tl: {
+                hd: 3,
+                tl: {
+                  hd: 2,
+                  tl: /* [] */0
+                }
+              }
+            });
+        var s1$1 = Seq.fromArray([1]);
+        var s2$1 = Seq.fromArray([
+              2,
+              3
+            ]);
+        TestUtils.seqEqual("seq 1 merge seq 2 3, is seq 1 2 3", Seq.merge(s1$1, s2$1), {
+              hd: 1,
+              tl: {
+                hd: 2,
+                tl: {
+                  hd: 3,
+                  tl: /* [] */0
+                }
+              }
+            });
+        var s1$2 = Seq.fromArray([1]);
+        var s2$2 = Seq.fromArray([
+              2,
+              3,
+              4
+            ]);
+        TestUtils.seqEqual("seq 1 merge seq 2 3 4, is seq 1 2 3 4", Seq.merge(s1$2, s2$2), {
+              hd: 1,
+              tl: {
+                hd: 2,
+                tl: {
+                  hd: 3,
+                  tl: {
+                    hd: 4,
+                    tl: /* [] */0
+                  }
+                }
+              }
+            });
+        var s1$3 = Seq.fromArray([
+              1,
+              2,
+              3
+            ]);
+        var s2$3 = Seq.fromArray([4]);
+        return TestUtils.seqEqual("seq 1 2 3 merge seq 4, is seq 1 2 3 4", Seq.merge(s1$3, s2$3), {
+                    hd: 1,
+                    tl: {
+                      hd: 4,
+                      tl: {
+                        hd: 2,
+                        tl: {
+                          hd: 3,
+                          tl: /* [] */0
+                        }
+                      }
+                    }
+                  });
+      }));
+
 function createInfinitSeq(i) {
   return Seq.cons(i, {
               TAG: /* Lazy */1,

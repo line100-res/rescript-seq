@@ -204,6 +204,32 @@ let rec append = (seq, thunk) => {
   }
 }
 
+let rec merge = (seq1, seq2) => {
+  switch seq1 {
+  | Nil => seq2
+  | Cons(c) => lazyConsMapTail(c, t => {
+    if seq2 == Nil {
+      t
+    } else {
+      merge(seq2, t)
+    }
+  })
+  }
+}
+
+let rec forceMerge = (seq1, seq2) => {
+  switch seq1 {
+  | Nil => seq2
+  | Cons(c) => consMapTail(c, t => {
+    if seq2 == Nil {
+      t
+    } else {
+      forceMerge(seq2, t)
+    }
+  })
+  }
+}
+
 let countForced = seq => {
   let rec loop = (index, s) => {
     switch s {

@@ -324,6 +324,34 @@ function append(seq, thunk) {
         };
 }
 
+function merge(seq1, seq2) {
+  if (seq1) {
+    return lazyConsMapTail(seq1._0, (function (t) {
+                  if (seq2 === /* Nil */0) {
+                    return t;
+                  } else {
+                    return merge(seq2, t);
+                  }
+                }));
+  } else {
+    return seq2;
+  }
+}
+
+function forceMerge(seq1, seq2) {
+  if (seq1) {
+    return consMapTail(seq1._0, (function (t) {
+                  if (seq2 === /* Nil */0) {
+                    return t;
+                  } else {
+                    return forceMerge(seq2, t);
+                  }
+                }));
+  } else {
+    return seq2;
+  }
+}
+
 function countForced(seq) {
   var _index = 0;
   var _s = seq;
@@ -591,6 +619,8 @@ exports.every = every;
 exports.map = map;
 exports.lazyMap = lazyMap;
 exports.append = append;
+exports.merge = merge;
+exports.forceMerge = forceMerge;
 exports.countForced = countForced;
 exports.take = take;
 exports.lazyTake = lazyTake;

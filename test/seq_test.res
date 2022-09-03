@@ -70,6 +70,24 @@ test("test seq append", () => {
   seqEqual(~message="seq 1 2 + seq 3, is seq 1 2 3", Seq.append(s1, () => s2), list{1, 2, 3})
 })
 
+test("test seq merge", () => {
+  let s1 = Seq.fromArray([1, 2])
+  let s2 = Seq.fromArray([3])
+  seqEqual(~message="seq 1 2 merge seq 3, is seq 1 3 2", Seq.merge(s1, s2), list{1, 3, 2})
+
+  let s1 = Seq.fromArray([1])
+  let s2 = Seq.fromArray([2, 3])
+  seqEqual(~message="seq 1 merge seq 2 3, is seq 1 2 3", Seq.merge(s1, s2), list{1, 2, 3})
+
+  let s1 = Seq.fromArray([1])
+  let s2 = Seq.fromArray([2, 3, 4])
+  seqEqual(~message="seq 1 merge seq 2 3 4, is seq 1 2 3 4", Seq.merge(s1, s2), list{1, 2, 3, 4})
+
+  let s1 = Seq.fromArray([1, 2, 3])
+  let s2 = Seq.fromArray([4])
+  seqEqual(~message="seq 1 2 3 merge seq 4, is seq 1 2 3 4", Seq.merge(s1, s2), list{1, 4, 2, 3})
+})
+
 let rec createInfinitSeq = (i) =>
   Seq.cons(i, Seq.Lazy(() => Some(createInfinitSeq(i + 1))))
 

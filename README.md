@@ -56,15 +56,16 @@ seqEqual(~message="lazyMap v + 1 before take first 3 from infinit list", first3,
 - [x] fromArrayInPlace: `(Array<'a>) => t<'a>`
 - [x] fromString: `(string) => t<string>`, convert `string` to `sequence of char`
 
-### Conditional Operator
+### Conditional Operators
 - [x] isEmpty: `(t<'a>) => bool`
 - [x] equal: `(t<'a>, t<'a>) => bool`
 - [x] match: `(t<'a>, list<'a>) => bool`
 - [x] every: `(t<'a>, 'a => bool) = bool`
 
-### Transformation Operator
+### Transformation Operators
 - [x] map: `(t<'a>, 'a => 'b) => t<'b>`
 - [x] append: `(t<'a>, t<'a>) => t<'a>`
+- [x] merge: `(t<'a>, t<'a>) => t<'a>`
 
 - [x] lazyMap: `(t<'a>, 'a => 'b) => t<'b>`
 

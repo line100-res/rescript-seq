@@ -43,6 +43,10 @@ var lazyMap = Seq_Core.lazyMap;
 
 var append = Seq_Core.append;
 
+var merge = Seq_Core.merge;
+
+var forceMerge = Seq_Core.forceMerge;
+
 var countForced = Seq_Core.countForced;
 
 var take = Seq_Core.take;
@@ -87,6 +91,8 @@ exports.every = every;
 exports.map = map;
 exports.lazyMap = lazyMap;
 exports.append = append;
+exports.merge = merge;
+exports.forceMerge = forceMerge;
 exports.countForced = countForced;
 exports.take = take;
 exports.lazyTake = lazyTake;
